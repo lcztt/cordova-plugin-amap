@@ -1,5 +1,6 @@
 
 #import "CDVAMap4Yxt.h"
+#import <MapKit/MapKit.h>
 #import <AMapFoundationKit/AMapFoundationKit.h>
 #import <AMapNaviKit/AMapNaviKit.h>
 #import <AMapLocationKit/AMapLocationKit.h>
@@ -654,6 +655,126 @@ struct Yxtlocation {
         CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
         [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
     }
+}
+
+#pragma mark - navigation -
+
+- (void)openNav:(CDVInvokedUrlCommand *)command
+{
+    
+    if (!command.arguments.count) {
+        return;
+    }
+    NSDictionary *params = command.arguments[0];
+//
+//    NSDictionary *params = @{@"start_address":@"我的位置",
+//                             @"start_lat":@"39.1138003159",
+//                             @"start_lng":@"117.2165143490",
+//                             @"end_address":@"终点",
+//                             @"end_lat":@"39.1042806705",
+//                             @"end_lng":@"117.2229087353",
+//
+//                             @"baidu":@"baidumap://map/direction?origin=34.264642646862,108.95108518068&destination=40.007623,116.360582&coord_type=bd09ll&mode=driving&src=ios.baidu.openAPIdemo",
+//                             @"gaode":@"iosamap://navi?sourceApplication=app_name&lat=36.547901&lon=104.258354&dev=0",
+//                             @"qq":@"qqmap://map/routeplan?type=drive&from=清华&fromcoord=39.994745,116.247282&to=怡和世家&tocoord=39.867192,116.493187&referer=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77"};
+    
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"导航" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    if ([[UIApplication sharedApplication] canOpenURL:[NSURL URLWithString:@"baidumap://"]]) {
+        
+        [alert addAction:[UIAlertAction actionWithTitle:@"百度地图" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            [self baiduMap:params];
+        }]];
+    }
+    
+    if ([[UIApplication sharedApplication] canOpenURL:[NSURL URLWithString:@"qqmap://"]]) {
+        
+        [alert addAction:[UIAlertAction actionWithTitle:@"腾讯地图" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            [self tencentMap:params];
+        }]];
+    }
+    
+    if ([[UIApplication sharedApplication] canOpenURL:[NSURL URLWithString:@"iosamap://"]]) {
+        
+        [alert addAction:[UIAlertAction actionWithTitle:@"高德地图" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            [self gaodeMap:params];
+        }]];
+    }
+    
+    [alert addAction:[UIAlertAction actionWithTitle:@"手机地图" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
+        [self iphoneMap:params];
+    }]];
+    
+    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
+        
+    }]];
+    
+    [self.viewController presentViewController:alert animated:YES completion:^{}];
+}
+
+//手机地图
+- (void)iphoneMap:(NSDictionary *)dic
+{
+    //起点
+    CLLocationCoordinate2D from = CLLocationCoordinate2DMake([dic[@"start_lat"] doubleValue], [dic[@"start_lng"] doubleValue]);
+    MKMapItem *currentLocation = [[MKMapItem alloc] initWithPlacemark:[[MKPlacemark alloc] initWithCoordinate:from addressDictionary:nil]];
+    currentLocation.name = dic[@"start_address"];
+    
+    //终点
+    CLLocationCoordinate2D to =CLLocationCoordinate2DMake([dic[@"end_lat"] doubleValue], [dic[@"end_lng"] doubleValue]);
+    MKMapItem *toLocation = [[MKMapItem alloc] initWithPlacemark:[[MKPlacemark alloc] initWithCoordinate:to addressDictionary:nil]];
+    toLocation.name = dic[@"end_address"];
+    
+    NSArray *items = [NSArray arrayWithObjects:currentLocation, toLocation,nil];
+    NSDictionary *options = @{ MKLaunchOptionsDirectionsModeKey : MKLaunchOptionsDirectionsModeDriving,
+                               MKLaunchOptionsMapTypeKey : [NSNumber numberWithInteger:MKMapTypeStandard],
+                               MKLaunchOptionsShowsTrafficKey : @YES};
+    
+    //打开苹果自身地图应用
+    [MKMapItem openMapsWithItems:items launchOptions:options];
+}
+
+#pragma mark - 以下url地址所传参数含义具体看文档说明
+
+// 百度地图 文档地址：http://lbsyun.baidu.com/index.php?title=uri/api/ios
+// 例子：[NSString stringWithFormat:@"baidumap://map/direction?
+// origin=%@&destination=latlng:%@,%@|name:%@&mode=driving&coord_type=gcj02&src=ios.vitas.chatapp",
+// dic[@"start_address"], dic[@"end_lat"], dic[@"end_lng"], dic[@"end_address"]]
+- (void)baiduMap:(NSDictionary *)dic
+{
+    NSString *urlString = dic[@"baidu"];
+    urlString = [urlString stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
+    NSURL *url = [NSURL URLWithString:urlString];
+    
+    [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:^(BOOL success) {
+        NSLog(@"scheme调用结束");
+    }];
+}
+
+// 腾讯地图 文档地址：https://lbs.qq.com/webApi/uriV1/uriGuide/uriMobileRoute
+// 例子：[NSString stringWithFormat:@"qqmap://map/routeplan?type=drive&from=%@&fromcoord=%@,%@&to=%@&tocoord=%@,%@&referer=%@",
+// dic[@"start_address"], dic[@"start_lat"], dic[@"start_lng"], dic[@"end_address"], dic[@"end_lat"], dic[@"end_lng"], dic[@"qq_key"]]
+- (void)tencentMap:(NSDictionary *)dic
+{
+    NSString *urlString = dic[@"qq"];
+    urlString = [urlString stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
+    NSURL *url = [NSURL URLWithString:urlString];
+    
+    [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:^(BOOL success) {
+        NSLog(@"scheme调用结束");
+    }];
+}
+
+// 高德地图 文档地址：https://lbs.amap.com/api/amap-mobile/guide/ios/navi
+// 例子：[NSString stringWithFormat:@"iosamap://navi?sourceApplication=%@&lat=%@&lon=%@&dev=0",dic[@"app_name"],dic[@"end_lat"], dic[@"end_lng"]]
+- (void)gaodeMap:(NSDictionary *)dic
+{
+    NSString *urlString = dic[@"gaode"];
+    urlString = [urlString stringByAddingPercentEncodingWithAllowedCharacters:[NSCharacterSet URLQueryAllowedCharacterSet]];
+    NSURL *url = [NSURL URLWithString:urlString];
+    
+    [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:^(BOOL success) {
+        NSLog(@"scheme调用结束");
+    }];
 }
 
 @end

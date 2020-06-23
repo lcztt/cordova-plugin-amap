@@ -27,4 +27,7 @@
 
 - (void)stopScheduledPosition:(CDVInvokedUrlCommand *)command;
 
+// 开启导航
+- (void)openNav:(CDVInvokedUrlCommand *)command;
+
 @end

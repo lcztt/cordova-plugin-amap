@@ -57,5 +57,27 @@ AMapPlugin.onScheduledLocationEvent = function (params) {
     })
 };
 
+// 开启导航选择，参数如下：
+/*
+{
+    // 苹果导航APP使用的参数
+    "start_address":"我的位置",
+    "start_lat":"39.1138003159",
+    "start_lng":"117.2165143490",
+    "end_address":"终点",
+    "end_lat":"39.1042806705",
+    "end_lng":"117.2229087353",
+
+    // 百度导航
+    "baidu":"baidumap://map/direction?origin=34.264642646862,108.95108518068&destination=40.007623,116.360582&coord_type=bd09ll&mode=driving&src=ios.baidu.openAPIdemo",
+    // 高德导航
+    "gaode":"iosamap://navi?sourceApplication=app_name&lat=36.547901&lon=104.258354&dev=0",
+    // 腾讯导航
+    "qq":"qqmap://map/routeplan?type=drive&from=清华&fromcoord=39.994745,116.247282&to=怡和世家&tocoord=39.867192,116.493187&referer=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77"
+};
+*/
+AMapPlugin.openNav = function (params) {
+    exec(null, null, "AMapPlugin", "openNav", [params]);
+};
 
 module.exports = AMapPlugin;

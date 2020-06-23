@@ -158,7 +158,6 @@ The native map view is faster, use less network usage, display 3D views, and eve
     <framework src="libc++.tbd" /> -->
     <!-- <framework src="libz.tbd" /> -->
 
-    <!--XCode9.1存在BUG 需手动添加下-->
     <config-file target="*-Info.plist" parent="NSLocationWhenInUseUsageDescription">
         <string>App中签到等功能需要使用系统定位服务，请允许</string>
     </config-file>
@@ -181,6 +180,15 @@ The native map view is faster, use less network usage, display 3D views, and eve
             <true/>
         </dict>
     </config-file>
+
+    <!--scheme query whitlist-->
+  <config-file platform="ios" target="*-Info.plist" parent="LSApplicationQueriesSchemes">
+      <array>
+		    <string>baidumap</string>
+		    <string>qqmap</string>
+		    <string>iosamap</string>
+      </array>
+  </config-file>
 
     <!-- APIKey 请自行配置 参照高德官网 -->
     <config-file target="*-Info.plist" parent="AMapApiKey">
