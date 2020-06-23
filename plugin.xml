@@ -122,10 +122,10 @@ The native map view is faster, use less network usage, display 3D views, and eve
     
     <header-file src="src/ios/CDVAMap4Yxt.h" />
     <source-file src="src/ios/CDVAMap4Yxt.m" />
-    <!-- <header-file src="src/ios/MAMutablePolylineRenderer.h" />
+    <header-file src="src/ios/MAMutablePolylineRenderer.h" />
     <source-file src="src/ios/MAMutablePolylineRenderer.m" />
     <header-file src="src/ios/MAMutablePolyline.h" />
-    <source-file src="src/ios/MAMutablePolyline.m" /> -->
+    <source-file src="src/ios/MAMutablePolyline.m" />
     <header-file src="src/ios/SBGMapHeaderView.h" />
     <source-file src="src/ios/SBGMapHeaderView.m" />
 
