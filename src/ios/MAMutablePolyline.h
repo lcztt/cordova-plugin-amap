@@ -1,5 +1,7 @@
 #import <Foundation/Foundation.h>
-#import <MAMapKit/MAOverlay.h>
+#import <AMapNaviKit/AMapNaviKit.h>
+
+#define use_navigation 1
 
 @interface MAMutablePolyline : NSObject<MAOverlay>
 

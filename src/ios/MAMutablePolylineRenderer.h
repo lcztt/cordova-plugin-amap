@@ -1,4 +1,4 @@
-#import <MAMapKit/MAMapKit.h>
+#import <AMapNaviKit/AMapNaviKit.h>
 
 @interface MAMutablePolylineRenderer : MAOverlayPathRenderer
 

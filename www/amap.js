@@ -23,20 +23,20 @@ AMapPlugin.stopUpdatePosition = function (successCallback, errorCallback) {
     exec(successCallback, errorCallback, "AMapPlugin", "stopUpdatePosition", []);
 };
 
-//展示地图
-AMapPlugin.showMap = function (successCallback, errorCallback, coordinates, tips, title) {
-    exec(successCallback, errorCallback, "AMapPlugin", "showMap", [coordinates, tips, title]);
-};
+// //展示地图
+// AMapPlugin.showMap = function (successCallback, errorCallback, coordinates, tips, title) {
+//     exec(successCallback, errorCallback, "AMapPlugin", "showMap", [coordinates, tips, title]);
+// };
 
-//关闭展示的地图
-AMapPlugin.hideMap = function (successCallback, errorCallback) {
-    exec(successCallback, errorCallback, "AMapPlugin", "hideMap", []);
-};
+// //关闭展示的地图
+// AMapPlugin.hideMap = function (successCallback, errorCallback) {
+//     exec(successCallback, errorCallback, "AMapPlugin", "hideMap", []);
+// };
 
-//轨迹地图
-AMapPlugin.traceMap = function (successCallback, errorCallback, coordinates, title) {
-    exec(successCallback, errorCallback, "AMapPlugin", "traceMap", [coordinates, title]);
-};
+// //轨迹地图
+// AMapPlugin.traceMap = function (successCallback, errorCallback, coordinates, title) {
+//     exec(successCallback, errorCallback, "AMapPlugin", "traceMap", [coordinates, title]);
+// };
 
 
 module.exports = AMapPlugin;

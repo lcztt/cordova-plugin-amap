@@ -6,7 +6,7 @@
 
 #import <Cordova/CDVPlugin.h>
 #import <AMapFoundationKit/AMapFoundationKit.h>
-#import <MAMapKit/MAMapKit.h>
+#import <AMapNaviKit/AMapNaviKit.h>
 #import <AMapLocationKit/AMapLocationKit.h>
 #import "MAMutablePolylineRenderer.h"
 #import "MAMutablePolyline.h"
@@ -62,6 +62,6 @@ struct Yxtlocation {
 
 -(void) traceMap:(CDVInvokedUrlCommand*)command;
 
-// -(void)setAnnotations:(NSString*)coordinates andTips:(NSString*)tips;
+ -(void)setAnnotations:(NSString*)coordinates andTips:(NSString*)tips;
 
 @end

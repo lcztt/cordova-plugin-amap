@@ -12,13 +12,13 @@
     
     if (overlay.pointArray.count > 0)
     {
-        CGPoint point = [self pointForMapPoint:[overlay mapPointForPointAt:0]];
+        CGPoint point = [self glPointForMapPoint:[overlay mapPointForPointAt:0]];
         CGPathMoveToPoint(path, nil, point.x,point.y);
     }
     
     for (int i = 1; i < overlay.pointArray.count; i++)
     {
-        CGPoint point = [self pointForMapPoint:[overlay mapPointForPointAt:i]];
+        CGPoint point = [self glPointForMapPoint:[overlay mapPointForPointAt:i]];
         CGPathAddLineToPoint(path, nil, point.x, point.y);
     }
     
