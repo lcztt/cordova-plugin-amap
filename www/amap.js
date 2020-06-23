@@ -49,6 +49,8 @@ AMapPlugin.stopScheduledPosition = function () {
 };
 
 // 注册客户端定时定位回调方法
+// 回调成功参数：ok=0,errorCode,errorInfo
+// 回调失败参数：ok=1,provinceName,cityName,cityCode,districtName,latitude,longitude
 AMapPlugin.onScheduledLocationEvent = function (params) {
     cordova.fireDocumentEvent('AMapPlugin.onScheduledLocationEvent', {
         params: params
