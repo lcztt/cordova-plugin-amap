@@ -1,7 +1,11 @@
 
 #import "CDVAMap4Yxt.h"
-//#import "MAMutablePolyline.h"
-//#import "MAMutablePolylineRenderer.h"
+#import <AMapFoundationKit/AMapFoundationKit.h>
+#import <AMapNaviKit/AMapNaviKit.h>
+#import <AMapLocationKit/AMapLocationKit.h>
+#import "MAMutablePolylineRenderer.h"
+#import "MAMutablePolyline.h"
+#import "SBGMapHeaderView.h"
 
 static NSString* const USER_DEFAULT_KEY = @"locations";
 static NSString* const SPEED_KEY = @"speed";
@@ -15,11 +19,51 @@ static NSString* const INTERVAL_KEY = @"interval";
 
 static int const MAX_LENGTH = 10;
 
-@implementation CDVAMap4Yxt
+struct Yxtlocation {
+    CLLocationDegrees latitude;
+    CLLocationDegrees longitude;
+    double speed;
+    double accuracy;
+    long timestamp;
+};
+
+@interface CDVAMap4Yxt () <AMapLocationManagerDelegate, MAMapViewDelegate>
 {
+    BOOL isStart;
+    double lat;
+    double lng;
     NSMutableArray * _tracking;
     CFTimeInterval _duration;
 }
+
+@property (nonatomic, strong) AMapLocationManager *curLocationManager; //获取当前位置
+
+@property (nonatomic, strong) AMapLocationManager *locationManager; //后台持续定位
+
+@property (nonatomic, assign) CGFloat minSpeed;     //最小速度
+
+@property (nonatomic, assign) CGFloat minFilter;    //最小范围
+
+@property (nonatomic, assign) CGFloat minInteval;   //更新间隔
+
+@property (nonatomic, assign) CGFloat distanceFilter;    //最小范围
+
+@property (nonatomic, strong) MAMapView *_mapView; //地图view
+
+@property (nonatomic, strong) NSMutableArray *annotations; //标注
+
+@property (nonatomic, strong) MAMutablePolylineRenderer *render;
+
+@property (nonatomic, strong) MAMutablePolyline *mutablePolyline;
+
+@property (nonatomic, strong) SBGMapHeaderView *headerView;
+
+@property (nonatomic, strong) NSTimer *timer;
+
+@end
+
+
+@implementation CDVAMap4Yxt
 
 //readValueFrom mainBundle
 - (NSString *)getAMapApiKey
@@ -27,12 +71,12 @@ static int const MAX_LENGTH = 10;
     return [[[NSBundle mainBundle] infoDictionary] objectForKey:@"AMapApiKey"];
 }
 
-#pragma mark - location -
-
 - (void)initLocationConfig
 {
     [AMapServices sharedServices].apiKey = [self getAMapApiKey];
 }
+
+#pragma mark - location -
 
 //获取当前位置
 - (void)getCurrentPosition:(CDVInvokedUrlCommand *)command
@@ -66,7 +110,7 @@ static int const MAX_LENGTH = 10;
                                           regeocode.city,@"cityName",
                                           regeocode.citycode,@"cityCode",
                                           regeocode.district,@"districtName",
-                                          regeocode.township,@"roadName",
+//                                          regeocode.township,@"roadName",
                                           @(location.coordinate.latitude),@"latitude",
                                           @(location.coordinate.longitude),@"longitude",
                                           nil];
@@ -79,7 +123,7 @@ static int const MAX_LENGTH = 10;
 }
 
 //开始后台持续定位
-- (void)startUpdatePosition:(CDVInvokedUrlCommand*)command
+- (void)startUpdatePosition:(CDVInvokedUrlCommand *)command
 {
     self.minSpeed   = 2;
     self.minFilter  = 50;
@@ -365,54 +409,6 @@ static int const MAX_LENGTH = 10;
     [self._mapView addOverlay:self.mutablePolyline];
 }
 
-- (void)setAnnotations:(NSString *)coordinates andTips: (NSString *)tips
-{
-    self.annotations = [NSMutableArray array];
-    
-    NSArray *coordinateslistItems = [coordinates componentsSeparatedByString:@";"];
-    NSArray *tipsItems = [tips componentsSeparatedByString:@","];
-    
-    long len =[coordinateslistItems count];
-    for(int i=0; i < len; i++) {
-        NSString* item = [coordinateslistItems objectAtIndex:i];
-        NSArray * tmp = [item componentsSeparatedByString:@","];
-        
-        CLLocationCoordinate2D coord = CLLocationCoordinate2DMake([[tmp objectAtIndex:0] doubleValue], [[tmp objectAtIndex:1] doubleValue]);
-        
-        MAPointAnnotation *a1 = [[MAPointAnnotation alloc] init];
-        a1.coordinate = coord;
-        a1.title      = [NSString stringWithFormat:@"%@", [tipsItems objectAtIndex:i]];
-        [self.annotations addObject:a1];
-    }
-    
-    [self._mapView addAnnotations:self.annotations];
-    [self._mapView showAnnotations:self.annotations edgePadding:UIEdgeInsetsMake(20, 20, 20, 80) animated:YES];
-}
-
-- (void) initRouter:(NSString *)coordinates
-{
-    
-    NSArray *coordinateslistItems = [coordinates componentsSeparatedByString:@";"];
-    long len =[coordinateslistItems count];
-    for(int i=0; i < len; i++) {
-        NSString* item = [coordinateslistItems objectAtIndex:i];
-        NSArray * tmp = [item componentsSeparatedByString:@","];
-        
-        CLLocationCoordinate2D coord = CLLocationCoordinate2DMake([[tmp objectAtIndex:0] doubleValue], [[tmp objectAtIndex:1] doubleValue]);
-        if (i == 0) {
-            MAPointAnnotation *a1 = [[MAPointAnnotation alloc] init];
-            a1.coordinate = coord;
-            a1.title      = [NSString stringWithFormat:@"%@", @"开始位置"];
-            [self._mapView addAnnotation:a1];
-        }
-        
-        [self.mutablePolyline appendPoint:MAMapPointForCoordinate(coord)];
-        
-    }
-    
-    //    NSLog(@"length is %@",[self.mutablePolyline ])
-}
-
 #pragma mark - delegate - MAMapViewDelegate -
 
 - (MAAnnotationView *)mapView:(MAMapView *)mapView viewForAnnotation:(id<MAAnnotation>)annotation
@@ -489,22 +485,175 @@ static int const MAX_LENGTH = 10;
 
 #pragma mark - util -
 
-
-- (void)checkPermissions
+- (void)setAnnotations:(NSString *)coordinates andTips: (NSString *)tips
 {
-    BOOL locationEnabled = [CLLocationManager locationServicesEnabled];
-    CLAuthorizationStatus authorizationStatus = [CLLocationManager authorizationStatus];
-    if (authorizationStatus == kCLAuthorizationStatusRestricted) {
-        // 拒绝app定位
+    self.annotations = [NSMutableArray array];
+    
+    NSArray *coordinateslistItems = [coordinates componentsSeparatedByString:@";"];
+    NSArray *tipsItems = [tips componentsSeparatedByString:@","];
+    
+    long len =[coordinateslistItems count];
+    for(int i=0; i < len; i++) {
+        NSString* item = [coordinateslistItems objectAtIndex:i];
+        NSArray * tmp = [item componentsSeparatedByString:@","];
+        
+        CLLocationCoordinate2D coord = CLLocationCoordinate2DMake([[tmp objectAtIndex:0] doubleValue], [[tmp objectAtIndex:1] doubleValue]);
+        
+        MAPointAnnotation *a1 = [[MAPointAnnotation alloc] init];
+        a1.coordinate = coord;
+        a1.title      = [NSString stringWithFormat:@"%@", [tipsItems objectAtIndex:i]];
+        [self.annotations addObject:a1];
     }
     
-    if (!locationEnabled) {
-        // 未开启定位服务
+    [self._mapView addAnnotations:self.annotations];
+    [self._mapView showAnnotations:self.annotations edgePadding:UIEdgeInsetsMake(20, 20, 20, 80) animated:YES];
+}
+
+- (void)initRouter:(NSString *)coordinates
+{
+    
+    NSArray *coordinateslistItems = [coordinates componentsSeparatedByString:@";"];
+    long len =[coordinateslistItems count];
+    for(int i=0; i < len; i++) {
+        NSString* item = [coordinateslistItems objectAtIndex:i];
+        NSArray * tmp = [item componentsSeparatedByString:@","];
+        
+        CLLocationCoordinate2D coord = CLLocationCoordinate2DMake([[tmp objectAtIndex:0] doubleValue], [[tmp objectAtIndex:1] doubleValue]);
+        if (i == 0) {
+            MAPointAnnotation *a1 = [[MAPointAnnotation alloc] init];
+            a1.coordinate = coord;
+            a1.title      = [NSString stringWithFormat:@"%@", @"开始位置"];
+            [self._mapView addAnnotation:a1];
+        }
+        
+        [self.mutablePolyline appendPoint:MAMapPointForCoordinate(coord)];
     }
 }
 
-- (void)scrollCenter:(id)sender {
+- (void)scrollCenter:(id)sender
+{
     [self._mapView setCenterCoordinate:self._mapView.userLocation.location.coordinate animated:YES];
+}
+
+#pragma mark - time handler -
+
+- (void)startScheduledPosition:(CDVInvokedUrlCommand *)command
+{
+    if (![self locationServicesEnabled]) {
+        CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"请开启手机的GPS定位功能"];
+        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+    }
+    
+    if (!command.arguments.count) {
+        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"请添加定时时间间隔"];
+        [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+        return;
+    }
+    
+    NSDictionary *params = command.arguments[0];
+    NSInteger time = [params[@"time"] integerValue];
+    
+    [self stopTimer];
+    [self startTimerWithInterval:time];
+}
+
+- (void)stopScheduledPosition:(CDVInvokedUrlCommand *)command
+{
+    [self stopTimer];
+}
+
+- (void)startTimerWithInterval:(NSInteger)interval
+{
+    if (!self.timer) {
+        self.timer = [NSTimer scheduledTimerWithTimeInterval:(NSTimeInterval)interval target:self selector:@selector(timerHandler) userInfo:nil repeats:YES];
+        [[NSRunLoop currentRunLoop] addTimer:self.timer forMode:NSRunLoopCommonModes];
+        [self.timer setFireDate:[NSDate distantPast]];
+    }
+}
+
+- (void)stopTimer
+{
+    if (self.timer) {
+        [self.timer invalidate];
+        self.timer = nil;
+    }
+}
+
+- (void)timerHandler
+{
+    if (!self.curLocationManager) {
+            [self initLocationConfig];
+            self.curLocationManager = [[AMapLocationManager alloc] init];
+            [self.curLocationManager setDesiredAccuracy:kCLLocationAccuracyNearestTenMeters];
+        }
+        
+        [self.commandDelegate runInBackground:^{
+            [self.curLocationManager requestLocationWithReGeocode:YES completionBlock:^(CLLocation *location, AMapLocationReGeocode *regeocode, NSError *error) {
+                if (error)
+                {
+                    
+                    if (error.code == AMapLocationErrorLocateFailed)
+                    {
+                        NSString *errorCode = [NSString stringWithFormat: @"%ld", (long)error.code];
+                        NSDictionary *dict = @{@"ok": @0,
+                                               @"errorCode": errorCode,
+                                               @"errorInfo": error.localizedDescription};
+                        [self callbackJSWithParams:dict];
+                    }
+                } else {
+                    if (regeocode)
+                    {
+                        NSDictionary *dict = @{@"ok":@1,
+                                               @"provinceName":regeocode.province,
+                                               @"cityName":regeocode.city,
+                                               @"cityCode":regeocode.citycode,
+                                               @"districtName":regeocode.district,
+                                               @"latitude":@(location.coordinate.latitude),
+                                               @"longitude":@(location.coordinate.longitude)};
+                       [self callbackJSWithParams:dict];
+                    }
+                }
+            }];
+        }];
+}
+
+- (void)callbackJSWithParams:(NSDictionary *)params
+{
+    NSString *paramStr = [self jsonStringEncodedWith:params];
+    NSString *jsStr = [NSString stringWithFormat:@"window.AMapPlugin.onScheduledLocationEvent(%@)", paramStr];
+    [self.commandDelegate evalJs:jsStr];
+}
+
+- (NSString *)jsonStringEncodedWith:(NSDictionary *)params
+{
+    if ([NSJSONSerialization isValidJSONObject:params]) {
+        NSError *error;
+        NSData *jsonData = [NSJSONSerialization dataWithJSONObject:params options:0 error:&error];
+        NSString *json = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+        return json;
+    }
+    return @"";
+}
+
+- (void)onReset
+{
+    [self stopTimer];
+}
+
+#pragma mark -
+
+- (void)checkAudioAuth:(CDVInvokedUrlCommand *)command
+{
+    if (([CLLocationManager locationServicesEnabled]) && ([CLLocationManager authorizationStatus] == kCLAuthorizationStatusAuthorizedAlways ||
+                                                          [CLLocationManager authorizationStatus] == kCLAuthorizationStatusAuthorizedWhenInUse)) {
+        NSLog(@"手机gps定位已经开启");
+        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+        [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+    } else {
+        NSLog(@"手机gps定位未开启");
+        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR];
+        [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+    }
 }
 
 @end
