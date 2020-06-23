@@ -201,7 +201,7 @@ The native map view is faster, use less network usage, display 3D views, and eve
     <!-- <pod name="AMap3DMap" /> -->
     <pod name="AMapSearch" />
     <pod name="AMapLocation" />
-    <!-- <pod name="AMapNavi" /> -->
+    <pod name="AMapNavi" />
 
 </platform>
 </plugin>
