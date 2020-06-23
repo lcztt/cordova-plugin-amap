@@ -109,7 +109,9 @@ The native map view is faster, use less network usage, display 3D views, and eve
 
   </platform>
 
+<!-- ios -->
 <platform name="ios">
+
     <preference name="API_KEY_FOR_IOS" />
 
     <config-file target="config.xml" parent="/*">
@@ -117,6 +119,7 @@ The native map view is faster, use less network usage, display 3D views, and eve
             <param name="ios-package" value="CDVAMap4Yxt"/>
         </feature>
     </config-file>
+    
     <header-file src="src/ios/CDVAMap4Yxt.h" />
     <source-file src="src/ios/CDVAMap4Yxt.m" />
     <header-file src="src/ios/MAMutablePolylineRenderer.h" />
@@ -127,14 +130,19 @@ The native map view is faster, use less network usage, display 3D views, and eve
     <source-file src="src/ios/SBGMapHeaderView.m" />
 
     <!--资源文件-->
-    <resource-file src="src/ios/MAMapKit.framework/AMap.bundle" />
+    <resource-file src="src/ios/icon/locationIcon@2x.png" />
+    <resource-file src="src/ios/icon/locationIcon@3x.png" />
+    <resource-file src="src/ios/icon/naviBackIcon@2x.png" />
+    <resource-file src="src/ios/icon/naviBackIcon@3x.png" />
+    
+    <!-- <resource-file src="src/ios/MAMapKit.framework/AMap.bundle" /> -->
 
     <!--引入framework-->
-    <framework src="src/ios/AMapLocationKit.framework" custom="true" />
+    <!-- <framework src="src/ios/AMapSearchKit.framework" custom="true" />
     <framework src="src/ios/AMapFoundationKit.framework" custom="true" />
-    <framework src="src/ios/MAMapKit.framework" custom="true" />
+    <framework src="src/ios/MAMapKit.framework" custom="true" /> -->
 
-    <framework src="UIKit.framework" />
+    <!-- <framework src="UIKit.framework" />
     <framework src="Foundation.framework" />
     <framework src="CoreGraphics.framework" />
     <framework src="QuartzCore.framework" />
@@ -147,10 +155,10 @@ The native map view is faster, use less network usage, display 3D views, and eve
     <framework src="JavaScriptCore.framework" />
     <framework src="GLKit.framework" />
     <framework src="libstdc++.6.0.9.tbd"/>
-    <framework src="libc++.tbd" />
+    <framework src="libc++.tbd" /> -->
+    <!-- <framework src="libz.tbd" /> -->
 
     <!--XCode9.1存在BUG 需手动添加下-->
-    <framework src="libz.tbd" />
     <config-file target="*-Info.plist" parent="NSLocationWhenInUseUsageDescription">
         <string>App中签到等功能需要使用系统定位服务，请允许</string>
     </config-file>
@@ -163,11 +171,9 @@ The native map view is faster, use less network usage, display 3D views, and eve
     <config-file target="-Info.plist" parent="NSPhotoLibraryUsageDescription">
         <string>是否允许此App访问您的相册?</string>
     </config-file>
-    
     <config-file target="-Info.plist" parent="NSCameraUsageDescription">
         <string>是否允许此App访问您的相机?</string>
     </config-file>
-    
 
     <config-file target="*-Info.plist" parent="NSAppTransportSecurity">
         <dict>
@@ -180,6 +186,12 @@ The native map view is faster, use less network usage, display 3D views, and eve
     <config-file target="*-Info.plist" parent="AMapApiKey">
         <string>$API_KEY_FOR_IOS</string>
     </config-file>
+
+    <pods-config ios-min-version="10.0" use-frameworks="true"></pods-config>
+    <pod name="AMap3DMap" />
+    <pod name="AMapSearch" />
+    <pod name="AMapLocation" />
+    <pod name="AMapNavi" />
 
 </platform>
 </plugin>
