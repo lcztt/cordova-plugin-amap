@@ -81,7 +81,7 @@ AMapPlugin.openNav = function (params) {
 };
 
 // 检查应用是否开启导航权限：
-AMapPlugin.openNav = function (params) {
+AMapPlugin.checkLocationAuth = function (params) {
     exec(null, null, "AMapPlugin", "checkLocationAuth", [params]);
 };
 
