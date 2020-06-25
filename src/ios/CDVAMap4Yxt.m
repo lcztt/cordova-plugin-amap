@@ -85,40 +85,39 @@ struct Yxtlocation {
     if (!self.curLocationManager) {
         [self initLocationConfig];
         self.curLocationManager = [[AMapLocationManager alloc] init];
+        self.curLocationManager.delegate = self;
         [self.curLocationManager setDesiredAccuracy:kCLLocationAccuracyNearestTenMeters];
     }
     
     [self.commandDelegate runInBackground:^{
         [self.curLocationManager requestLocationWithReGeocode:YES completionBlock:^(CLLocation *location, AMapLocationReGeocode *regeocode, NSError *error) {
             CDVPluginResult* pluginResult = nil;
-            if (error)
-            {
+            if (regeocode) {
+                NSDictionary *dict = @{@"provinceName":regeocode.province,
+                                       @"cityName":regeocode.city,
+                                       @"cityCode":regeocode.citycode,
+                                       @"districtName":regeocode.district,
+                                       @"latitude":@(location.coordinate.latitude),
+                                       @"longitude":@(location.coordinate.longitude)};
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
                 
-                if (error.code == AMapLocationErrorLocateFailed)
-                {
-                    NSString *errorCode = [NSString stringWithFormat: @"%ld", (long)error.code];
-                    NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:
-                                          errorCode,@"errorCode",
-                                          error.localizedDescription,@"errorInfo",
-                                          nil];
-                    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dict];
-                    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-                }
-            } else {
-                if (regeocode)
-                {
-                    NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:regeocode.province,@"provinceName",
-                                          regeocode.city,@"cityName",
-                                          regeocode.citycode,@"cityCode",
-                                          regeocode.district,@"districtName",
-//                                          regeocode.township,@"roadName",
-                                          @(location.coordinate.latitude),@"latitude",
-                                          @(location.coordinate.longitude),@"longitude",
-                                          nil];
-                    pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
-                    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-                }
+            } else if (location) {
+                
+                NSDictionary *dict = @{
+                                       @"latitude":@(location.coordinate.latitude),
+                                       @"longitude":@(location.coordinate.longitude)};
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
+                
+            } else if (error) {
+                
+                NSString *errorCode = [NSString stringWithFormat: @"%ld", (long)error.code];
+                NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:
+                                      errorCode,@"errorCode",
+                                      error.localizedDescription,@"errorInfo",
+                                      nil];
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsDictionary:dict];
             }
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         }];
     }];
 }
@@ -134,6 +133,7 @@ struct Yxtlocation {
     if (![self locationServicesEnabled]) {
         CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:@"请开启手机的GPS定位功能"];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        return;
     }
     
     [self initLocationConfig];
@@ -176,7 +176,7 @@ struct Yxtlocation {
 //停止后台持续定位
 - (void)stopUpdatePosition:(CDVInvokedUrlCommand *)command
 {
-    if(self.locationManager) {
+    if (self.locationManager) {
         [self.locationManager stopUpdatingLocation];
     }
     isStart = NO;
@@ -218,6 +218,11 @@ struct Yxtlocation {
     }
 }
 
+- (void)amapLocationManager:(AMapLocationManager *)manager doRequireLocationAuth:(CLLocationManager *)locationManager
+{
+    [locationManager requestAlwaysAuthorization];
+}
+
 #pragma mark - util -
 
 //判断是否开启了GPS
@@ -239,20 +244,15 @@ struct Yxtlocation {
  */
 - (void)adjustDistanceFilter:(CLLocation*)location
 {
-    if ( location.speed < self.minSpeed )
-    {
-        if ( fabs(self.distanceFilter-self.minFilter) > 0.1f )
-        {
+    if ( location.speed < self.minSpeed ) {
+        if ( fabs(self.distanceFilter-self.minFilter) > 0.1f ) {
             self.distanceFilter = self.minFilter;
             self.locationManager.distanceFilter = self.distanceFilter;
         }
-    }
-    else
-    {
+    } else {
         CGFloat lastSpeed = self.distanceFilter/self.minInteval;
         
-        if ( (fabs(lastSpeed-location.speed)/lastSpeed > 0.1f) || (lastSpeed < 0) )
-        {
+        if ( (fabs(lastSpeed-location.speed)/lastSpeed > 0.1f) || (lastSpeed < 0) ) {
             CGFloat newSpeed  = (int)(location.speed+0.5f);
             CGFloat newFilter = newSpeed*self.minInteval;
             
@@ -262,7 +262,7 @@ struct Yxtlocation {
     }
 }
 
-- (NSMutableArray*)getLocations {
+- (NSMutableArray *)getLocations {
     NSUserDefaults* userDefaults = [NSUserDefaults standardUserDefaults];
     NSArray* array = [userDefaults objectForKey:USER_DEFAULT_KEY];
     NSMutableArray* mutableArray = nil;
@@ -274,21 +274,21 @@ struct Yxtlocation {
     return mutableArray;
 }
 
-- (void) setLocations:(NSMutableArray*)locations
+- (void)setLocations:(NSMutableArray*)locations
 {
     NSUserDefaults* userDefaults = [NSUserDefaults standardUserDefaults];
-    NSArray * array = [NSArray arrayWithArray:locations];
+    NSArray *array = [NSArray arrayWithArray:locations];
     [userDefaults setObject:array forKey:USER_DEFAULT_KEY];
 }
 
-- (NSString*)dictionaryToJson:(NSDictionary*)dictionary
+- (NSString *)dictionaryToJson:(NSDictionary*)dictionary
 {
-    NSData* jsonData = [NSJSONSerialization dataWithJSONObject:dictionary options:NSJSONWritingPrettyPrinted error:nil];
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dictionary options:NSJSONWritingPrettyPrinted error:nil];
     return [[NSString alloc] initWithBytes:[jsonData bytes] length:[jsonData length] encoding:NSUTF8StringEncoding];
 }
 
 //暂存持续定位数据
-- (void) putLocation:(struct Yxtlocation) location
+- (void)putLocation:(struct Yxtlocation) location
 {
     //is in background
     UIApplicationState appState = UIApplicationStateActive;
@@ -317,224 +317,224 @@ struct Yxtlocation {
 #pragma mark - navigation -
 
 //init map Config
-- (void)initMapConfig
-{
-    [AMapServices sharedServices].apiKey = [self getAMapApiKey];
-}
-
-//初始化地图
-- (void)initMapView
-{
-    if (self._mapView) {
-        self._mapView = nil;
-    }
-    self.headerView = [[SBGMapHeaderView alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(self.webView.bounds), 64)];
-    self.headerView.title = @"定位";
-    
-    __weak CDVAMap4Yxt *weakSelf = self;
-    [self.headerView setBackCallBack:^{
-        [weakSelf hideMap:nil];
-    }];
-    self.headerView.backgroundColor = [UIColor colorWithRed:87/255.0 green:142/255.0 blue:220/255.0 alpha:1];
-    [self.webView addSubview:self.headerView];
-    self._mapView = [[MAMapView alloc] initWithFrame:CGRectMake(0, 64, CGRectGetWidth(self.webView.bounds), CGRectGetHeight(self.webView.bounds))];
-    self._mapView.delegate = self;
-    self._mapView.showsUserLocation = YES;
-    self._mapView.distanceFilter = 10;
-    self._mapView.desiredAccuracy = kCLLocationAccuracyBestForNavigation;
-    self._mapView.pausesLocationUpdatesAutomatically = NO;
-    
-    [self._mapView setUserTrackingMode: MAUserTrackingModeFollow animated:YES];
-    
-    [self.webView addSubview:self._mapView];
-    
-    UIButton *locationBtn = [UIButton buttonWithType:UIButtonTypeCustom];
-    [self._mapView addSubview:locationBtn];
-    locationBtn.backgroundColor = [UIColor whiteColor];
-    [locationBtn addTarget:self action:@selector(scrollCenter:) forControlEvents:UIControlEventTouchUpInside];
-    locationBtn.frame = CGRectMake(20, CGRectGetHeight(self._mapView.frame) - 128, 27.5, 27.5);
-    //    NSString * path = [[[NSBundle mainBundle] pathForResource:@"AMap" ofType:@"bundle"] stringByAppendingPathComponent:@"images/locationIcon.png"];
-    UIImage *img = [UIImage imageNamed:@"locationIcon"];
-    [locationBtn setImage:img forState:UIControlStateNormal];
-}
-
-- (void)initOverlay
-{
-    self.mutablePolyline = [[MAMutablePolyline alloc] initWithPoints:@[]];
-}
-
-//展示地图
-- (void)showMap:(CDVInvokedUrlCommand *)command
-{
-    [self initMapConfig];
-    [self initMapView];
-    
-    self.headerView.title = command.arguments[2];
-    NSString* coordinates = [command.arguments objectAtIndex:0];
-    NSString* tips        = [command.arguments objectAtIndex:1];
-    
-    if (coordinates.length && tips.length) {
-        [self setAnnotations:coordinates andTips:tips];
-    }
-}
-
-//关闭地图
-- (void) hideMap:(CDVInvokedUrlCommand *)command
-{
-    if (self._mapView != nil) {
-        [self._mapView removeFromSuperview];
-        NSLog(@"remove From Superview");
-    }
-    if (self.headerView != nil) {
-        [self.headerView removeFromSuperview];
-    }
-    NSString* okStr = @"ok";
-    
-    CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:okStr];
-    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
-}
-
-//我的轨迹
-- (void)traceMap:(CDVInvokedUrlCommand *)command
-{
-    [self initMapConfig];
-    [self initMapView];
-    [self initOverlay];
-    
-    NSString* coordinates = [command.arguments objectAtIndex:0];
-    
-    if (coordinates.length) {
-        [self initRouter:coordinates];
-    }
-    
-    [self._mapView addOverlay:self.mutablePolyline];
-}
-
-#pragma mark - delegate - MAMapViewDelegate -
-
-- (MAAnnotationView *)mapView:(MAMapView *)mapView viewForAnnotation:(id<MAAnnotation>)annotation
-{
-    if ([annotation isKindOfClass:[MAPointAnnotation class]])
-    {
-        static NSString *pointReuseIndetifier = @"pointReuseIndetifier";
-        MAPinAnnotationView *annotationView = (MAPinAnnotationView*)[mapView dequeueReusableAnnotationViewWithIdentifier:pointReuseIndetifier];
-        if (annotationView == nil)
-        {
-            annotationView = [[MAPinAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:pointReuseIndetifier];
-        }
-        
-        annotationView.canShowCallout               = YES;
-        annotationView.animatesDrop                 = YES;
-        annotationView.draggable                    = YES;
-        annotationView.rightCalloutAccessoryView    = [UIButton buttonWithType:UIButtonTypeDetailDisclosure];
-        annotationView.pinColor                     = [self.annotations indexOfObject:annotation] % 3;
-        
-        return annotationView;
-    }
-    
-    return nil;
-}
-
-- (MAOverlayPathRenderer *)mapView:(MAMapView *)mapView rendererForOverlay:(id<MAOverlay>)overlay
-{
-    
-    if ([overlay isKindOfClass:[MAMutablePolyline class]])
-    {
-        MAMutablePolylineRenderer *renderer = [[MAMutablePolylineRenderer alloc] initWithOverlay:overlay];
-        renderer.lineWidth = 4.0f;
-        
-        renderer.strokeColor = [UIColor redColor];
-        self.render = renderer;
-        
-        return renderer;
-    }
-    
-    return nil;
-}
-
-- (void)mapView:(MAMapView *)mapView didUpdateUserLocation:(MAUserLocation *)userLocation updatingLocation:(BOOL)updatingLocation
-{
-    if (!updatingLocation)
-    {
-        return;
-    }
-    
-    if (userLocation.location.horizontalAccuracy < 80 && userLocation.location.horizontalAccuracy > 0)
-    {
-        
-        [self.mutablePolyline appendPoint: MAMapPointForCoordinate(userLocation.location.coordinate)];
-        
-        [self._mapView setCenterCoordinate:userLocation.location.coordinate animated:YES];
-        
-        //        [self.render invalidatePath];
-    }
-    //    [self.statusView showStatusWith:userLocation.location];
-}
-
-- (void)mapView:(MAMapView *)mapView  didChangeUserTrackingMode:(MAUserTrackingMode)mode animated:(BOOL)animated
-{
-    if (mode == MAUserTrackingModeNone)
-    {
-        // [self.locationBtn setImage:self.imageNotLocate forState:UIControlStateNormal];
-    }
-    else
-    {
-        // [self.locationBtn setImage:self.imageLocated forState:UIControlStateNormal];
-        [self._mapView setZoomLevel:16 animated:YES];
-    }
-}
-
-#pragma mark - util -
-
-- (void)setAnnotations:(NSString *)coordinates andTips: (NSString *)tips
-{
-    self.annotations = [NSMutableArray array];
-    
-    NSArray *coordinateslistItems = [coordinates componentsSeparatedByString:@";"];
-    NSArray *tipsItems = [tips componentsSeparatedByString:@","];
-    
-    long len =[coordinateslistItems count];
-    for(int i=0; i < len; i++) {
-        NSString* item = [coordinateslistItems objectAtIndex:i];
-        NSArray * tmp = [item componentsSeparatedByString:@","];
-        
-        CLLocationCoordinate2D coord = CLLocationCoordinate2DMake([[tmp objectAtIndex:0] doubleValue], [[tmp objectAtIndex:1] doubleValue]);
-        
-        MAPointAnnotation *a1 = [[MAPointAnnotation alloc] init];
-        a1.coordinate = coord;
-        a1.title      = [NSString stringWithFormat:@"%@", [tipsItems objectAtIndex:i]];
-        [self.annotations addObject:a1];
-    }
-    
-    [self._mapView addAnnotations:self.annotations];
-    [self._mapView showAnnotations:self.annotations edgePadding:UIEdgeInsetsMake(20, 20, 20, 80) animated:YES];
-}
-
-- (void)initRouter:(NSString *)coordinates
-{
-    
-    NSArray *coordinateslistItems = [coordinates componentsSeparatedByString:@";"];
-    long len =[coordinateslistItems count];
-    for(int i=0; i < len; i++) {
-        NSString* item = [coordinateslistItems objectAtIndex:i];
-        NSArray * tmp = [item componentsSeparatedByString:@","];
-        
-        CLLocationCoordinate2D coord = CLLocationCoordinate2DMake([[tmp objectAtIndex:0] doubleValue], [[tmp objectAtIndex:1] doubleValue]);
-        if (i == 0) {
-            MAPointAnnotation *a1 = [[MAPointAnnotation alloc] init];
-            a1.coordinate = coord;
-            a1.title      = [NSString stringWithFormat:@"%@", @"开始位置"];
-            [self._mapView addAnnotation:a1];
-        }
-        
-        [self.mutablePolyline appendPoint:MAMapPointForCoordinate(coord)];
-    }
-}
-
-- (void)scrollCenter:(id)sender
-{
-    [self._mapView setCenterCoordinate:self._mapView.userLocation.location.coordinate animated:YES];
-}
+//- (void)initMapConfig
+//{
+//    [AMapServices sharedServices].apiKey = [self getAMapApiKey];
+//}
+//
+////初始化地图
+//- (void)initMapView
+//{
+//    if (self._mapView) {
+//        self._mapView = nil;
+//    }
+//    self.headerView = [[SBGMapHeaderView alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(self.webView.bounds), 64)];
+//    self.headerView.title = @"定位";
+//
+//    __weak CDVAMap4Yxt *weakSelf = self;
+//    [self.headerView setBackCallBack:^{
+//        [weakSelf hideMap:nil];
+//    }];
+//    self.headerView.backgroundColor = [UIColor colorWithRed:87/255.0 green:142/255.0 blue:220/255.0 alpha:1];
+//    [self.webView addSubview:self.headerView];
+//    self._mapView = [[MAMapView alloc] initWithFrame:CGRectMake(0, 64, CGRectGetWidth(self.webView.bounds), CGRectGetHeight(self.webView.bounds))];
+//    self._mapView.delegate = self;
+//    self._mapView.showsUserLocation = YES;
+//    self._mapView.distanceFilter = 10;
+//    self._mapView.desiredAccuracy = kCLLocationAccuracyBestForNavigation;
+//    self._mapView.pausesLocationUpdatesAutomatically = NO;
+//
+//    [self._mapView setUserTrackingMode: MAUserTrackingModeFollow animated:YES];
+//
+//    [self.webView addSubview:self._mapView];
+//
+//    UIButton *locationBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+//    [self._mapView addSubview:locationBtn];
+//    locationBtn.backgroundColor = [UIColor whiteColor];
+//    [locationBtn addTarget:self action:@selector(scrollCenter:) forControlEvents:UIControlEventTouchUpInside];
+//    locationBtn.frame = CGRectMake(20, CGRectGetHeight(self._mapView.frame) - 128, 27.5, 27.5);
+//    //    NSString * path = [[[NSBundle mainBundle] pathForResource:@"AMap" ofType:@"bundle"] stringByAppendingPathComponent:@"images/locationIcon.png"];
+//    UIImage *img = [UIImage imageNamed:@"locationIcon"];
+//    [locationBtn setImage:img forState:UIControlStateNormal];
+//}
+//
+//- (void)initOverlay
+//{
+//    self.mutablePolyline = [[MAMutablePolyline alloc] initWithPoints:@[]];
+//}
+//
+////展示地图
+//- (void)showMap:(CDVInvokedUrlCommand *)command
+//{
+//    [self initMapConfig];
+//    [self initMapView];
+//
+//    self.headerView.title = command.arguments[2];
+//    NSString* coordinates = [command.arguments objectAtIndex:0];
+//    NSString* tips        = [command.arguments objectAtIndex:1];
+//
+//    if (coordinates.length && tips.length) {
+//        [self setAnnotations:coordinates andTips:tips];
+//    }
+//}
+//
+////关闭地图
+//- (void) hideMap:(CDVInvokedUrlCommand *)command
+//{
+//    if (self._mapView != nil) {
+//        [self._mapView removeFromSuperview];
+//        NSLog(@"remove From Superview");
+//    }
+//    if (self.headerView != nil) {
+//        [self.headerView removeFromSuperview];
+//    }
+//    NSString* okStr = @"ok";
+//
+//    CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsString:okStr];
+//    [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+//}
+//
+////我的轨迹
+//- (void)traceMap:(CDVInvokedUrlCommand *)command
+//{
+//    [self initMapConfig];
+//    [self initMapView];
+//    [self initOverlay];
+//
+//    NSString* coordinates = [command.arguments objectAtIndex:0];
+//
+//    if (coordinates.length) {
+//        [self initRouter:coordinates];
+//    }
+//
+//    [self._mapView addOverlay:self.mutablePolyline];
+//}
+//
+//#pragma mark - delegate - MAMapViewDelegate -
+//
+//- (MAAnnotationView *)mapView:(MAMapView *)mapView viewForAnnotation:(id<MAAnnotation>)annotation
+//{
+//    if ([annotation isKindOfClass:[MAPointAnnotation class]])
+//    {
+//        static NSString *pointReuseIndetifier = @"pointReuseIndetifier";
+//        MAPinAnnotationView *annotationView = (MAPinAnnotationView*)[mapView dequeueReusableAnnotationViewWithIdentifier:pointReuseIndetifier];
+//        if (annotationView == nil)
+//        {
+//            annotationView = [[MAPinAnnotationView alloc] initWithAnnotation:annotation reuseIdentifier:pointReuseIndetifier];
+//        }
+//
+//        annotationView.canShowCallout               = YES;
+//        annotationView.animatesDrop                 = YES;
+//        annotationView.draggable                    = YES;
+//        annotationView.rightCalloutAccessoryView    = [UIButton buttonWithType:UIButtonTypeDetailDisclosure];
+//        annotationView.pinColor                     = [self.annotations indexOfObject:annotation] % 3;
+//
+//        return annotationView;
+//    }
+//
+//    return nil;
+//}
+//
+//- (MAOverlayPathRenderer *)mapView:(MAMapView *)mapView rendererForOverlay:(id<MAOverlay>)overlay
+//{
+//
+//    if ([overlay isKindOfClass:[MAMutablePolyline class]])
+//    {
+//        MAMutablePolylineRenderer *renderer = [[MAMutablePolylineRenderer alloc] initWithOverlay:overlay];
+//        renderer.lineWidth = 4.0f;
+//
+//        renderer.strokeColor = [UIColor redColor];
+//        self.render = renderer;
+//
+//        return renderer;
+//    }
+//
+//    return nil;
+//}
+//
+//- (void)mapView:(MAMapView *)mapView didUpdateUserLocation:(MAUserLocation *)userLocation updatingLocation:(BOOL)updatingLocation
+//{
+//    if (!updatingLocation)
+//    {
+//        return;
+//    }
+//
+//    if (userLocation.location.horizontalAccuracy < 80 && userLocation.location.horizontalAccuracy > 0)
+//    {
+//
+//        [self.mutablePolyline appendPoint: MAMapPointForCoordinate(userLocation.location.coordinate)];
+//
+//        [self._mapView setCenterCoordinate:userLocation.location.coordinate animated:YES];
+//
+//        //        [self.render invalidatePath];
+//    }
+//    //    [self.statusView showStatusWith:userLocation.location];
+//}
+//
+//- (void)mapView:(MAMapView *)mapView  didChangeUserTrackingMode:(MAUserTrackingMode)mode animated:(BOOL)animated
+//{
+//    if (mode == MAUserTrackingModeNone)
+//    {
+//        // [self.locationBtn setImage:self.imageNotLocate forState:UIControlStateNormal];
+//    }
+//    else
+//    {
+//        // [self.locationBtn setImage:self.imageLocated forState:UIControlStateNormal];
+//        [self._mapView setZoomLevel:16 animated:YES];
+//    }
+//}
+//
+//#pragma mark - util -
+//
+//- (void)setAnnotations:(NSString *)coordinates andTips: (NSString *)tips
+//{
+//    self.annotations = [NSMutableArray array];
+//
+//    NSArray *coordinateslistItems = [coordinates componentsSeparatedByString:@";"];
+//    NSArray *tipsItems = [tips componentsSeparatedByString:@","];
+//
+//    long len =[coordinateslistItems count];
+//    for(int i=0; i < len; i++) {
+//        NSString* item = [coordinateslistItems objectAtIndex:i];
+//        NSArray * tmp = [item componentsSeparatedByString:@","];
+//
+//        CLLocationCoordinate2D coord = CLLocationCoordinate2DMake([[tmp objectAtIndex:0] doubleValue], [[tmp objectAtIndex:1] doubleValue]);
+//
+//        MAPointAnnotation *a1 = [[MAPointAnnotation alloc] init];
+//        a1.coordinate = coord;
+//        a1.title      = [NSString stringWithFormat:@"%@", [tipsItems objectAtIndex:i]];
+//        [self.annotations addObject:a1];
+//    }
+//
+//    [self._mapView addAnnotations:self.annotations];
+//    [self._mapView showAnnotations:self.annotations edgePadding:UIEdgeInsetsMake(20, 20, 20, 80) animated:YES];
+//}
+//
+//- (void)initRouter:(NSString *)coordinates
+//{
+//
+//    NSArray *coordinateslistItems = [coordinates componentsSeparatedByString:@";"];
+//    long len =[coordinateslistItems count];
+//    for(int i=0; i < len; i++) {
+//        NSString* item = [coordinateslistItems objectAtIndex:i];
+//        NSArray * tmp = [item componentsSeparatedByString:@","];
+//
+//        CLLocationCoordinate2D coord = CLLocationCoordinate2DMake([[tmp objectAtIndex:0] doubleValue], [[tmp objectAtIndex:1] doubleValue]);
+//        if (i == 0) {
+//            MAPointAnnotation *a1 = [[MAPointAnnotation alloc] init];
+//            a1.coordinate = coord;
+//            a1.title      = [NSString stringWithFormat:@"%@", @"开始位置"];
+//            [self._mapView addAnnotation:a1];
+//        }
+//
+//        [self.mutablePolyline appendPoint:MAMapPointForCoordinate(coord)];
+//    }
+//}
+//
+//- (void)scrollCenter:(id)sender
+//{
+//    [self._mapView setCenterCoordinate:self._mapView.userLocation.location.coordinate animated:YES];
+//}
 
 #pragma mark - time handler -
 
@@ -543,6 +543,7 @@ struct Yxtlocation {
     if (![self locationServicesEnabled]) {
         CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"请开启手机的GPS定位功能"];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+        return;
     }
     
     if (!command.arguments.count) {
@@ -585,35 +586,36 @@ struct Yxtlocation {
     if (!self.curLocationManager) {
             [self initLocationConfig];
             self.curLocationManager = [[AMapLocationManager alloc] init];
+            self.curLocationManager.delegate = self;
             [self.curLocationManager setDesiredAccuracy:kCLLocationAccuracyNearestTenMeters];
         }
         
         [self.commandDelegate runInBackground:^{
             [self.curLocationManager requestLocationWithReGeocode:YES completionBlock:^(CLLocation *location, AMapLocationReGeocode *regeocode, NSError *error) {
-                if (error)
-                {
+                NSDictionary *dict = nil;
+                if (regeocode) {
+                    dict = @{@"ok":@1,
+                             @"provinceName":regeocode.province,
+                             @"cityName":regeocode.city,
+                             @"cityCode":regeocode.citycode,
+                             @"districtName":regeocode.district,
+                             @"latitude":@(location.coordinate.latitude),
+                             @"longitude":@(location.coordinate.longitude)};
                     
-                    if (error.code == AMapLocationErrorLocateFailed)
-                    {
-                        NSString *errorCode = [NSString stringWithFormat: @"%ld", (long)error.code];
-                        NSDictionary *dict = @{@"ok": @0,
-                                               @"errorCode": errorCode,
-                                               @"errorInfo": error.localizedDescription};
-                        [self callbackJSWithParams:dict];
-                    }
-                } else {
-                    if (regeocode)
-                    {
-                        NSDictionary *dict = @{@"ok":@1,
-                                               @"provinceName":regeocode.province,
-                                               @"cityName":regeocode.city,
-                                               @"cityCode":regeocode.citycode,
-                                               @"districtName":regeocode.district,
-                                               @"latitude":@(location.coordinate.latitude),
-                                               @"longitude":@(location.coordinate.longitude)};
-                       [self callbackJSWithParams:dict];
-                    }
+                } else if (location) {
+                    
+                    dict = @{@"ok":@1,
+                             @"latitude":@(location.coordinate.latitude),
+                             @"longitude":@(location.coordinate.longitude)};
+                    
+                } else if (error) {
+                    
+                    NSString *errorCode = [NSString stringWithFormat: @"%ld", (long)error.code];
+                    dict = @{@"ok": @0,
+                             @"errorCode": errorCode,
+                             @"errorInfo": error.localizedDescription};
                 }
+                [self callbackJSWithParams:dict];
             }];
         }];
 }
@@ -643,7 +645,7 @@ struct Yxtlocation {
 
 #pragma mark -
 
-- (void)checkAudioAuth:(CDVInvokedUrlCommand *)command
+- (void)checkLocationAuth:(CDVInvokedUrlCommand *)command
 {
     if (([CLLocationManager locationServicesEnabled]) && ([CLLocationManager authorizationStatus] == kCLAuthorizationStatusAuthorizedAlways ||
                                                           [CLLocationManager authorizationStatus] == kCLAuthorizationStatusAuthorizedWhenInUse)) {

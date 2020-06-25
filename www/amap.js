@@ -39,7 +39,7 @@ AMapPlugin.traceMap = function (successCallback, errorCallback, coordinates, tit
 };
 
 //开启定时定位,参数： time(秒)，定时上报位置时间间隔
-AMapPlugin.trastartScheduledPositionceMap = function (successCallback, errorCallback, time) {
+AMapPlugin.startScheduledPosition = function (successCallback, errorCallback, time) {
     exec(successCallback, errorCallback, "AMapPlugin", "startScheduledPosition", [{"time":time}]);
 };
 
@@ -78,6 +78,11 @@ AMapPlugin.onScheduledLocationEvent = function (params) {
 */
 AMapPlugin.openNav = function (params) {
     exec(null, null, "AMapPlugin", "openNav", [params]);
+};
+
+// 检查应用是否开启导航权限：
+AMapPlugin.openNav = function (params) {
+    exec(null, null, "AMapPlugin", "checkLocationAuth", [params]);
 };
 
 module.exports = AMapPlugin;
