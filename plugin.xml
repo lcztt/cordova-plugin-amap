@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
-        id="cordova-plugin-amap" version="2.0.1">
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" id="cordova-plugin-amap" version="2.0.1">
 
   <name>cordova-plugin-amap</name>
 
   <description>Amap Maps native SDK for Android and iOS.
-This plugin allows your application to use the native Amap Maps views instead of the Amap Maps JavaScript API v3.
-The native map view is faster, use less network usage, display 3D views, and even work on offline network.</description>
+    This plugin allows your application to use the native Amap Maps views instead of the Amap Maps JavaScript API v3.
+    The native map view is faster, use less network usage, display 3D views, and even work on offline network.
+  </description>
 
   <author>dev@Silverbase-FE</author>
   <license>Apache 2.0 License</license>
@@ -22,8 +22,6 @@ The native map view is faster, use less network usage, display 3D views, and eve
     <engine name="apple-ios" version=">=10.0.0" />
   </engines>
 
-  <asset src="www/amap.js" target="js/amap.js" />
-
   <js-module src="www/amap.js" name="AMapPlugin">
     <clobbers target="window.AMapPlugin" />
   </js-module>
@@ -32,8 +30,8 @@ The native map view is faster, use less network usage, display 3D views, and eve
     <preference name="API_KEY_FOR_ANDROID" />
 
     <info>
-        Official document
-        https://github.com/Silverbase-FE/cordova-plugin-amap/blob/master/README.md
+      Official document
+      https://github.com/Silverbase-FE/cordova-plugin-amap/blob/master/README.md
     </info>
 
     <config-file target="res/xml/config.xml" parent="/*">
@@ -48,18 +46,28 @@ The native map view is faster, use less network usage, display 3D views, and eve
     <source-file src="src/android/TraceActivity.java" target-dir="app/src/main/java/com/yxt/cordova" />
 
     <source-file src="src/android/res/drawable-hdpi/location_marker.png" target-dir="app/src/main/res/drawable-hdpi" />
-    <source-file src="src/android/res/drawable-land-hdpi/location_marker.png" target-dir="app/src/main/res/drawable-land-hdpi" />
-    <source-file src="src/android/res/drawable-land-ldpi/location_marker.png" target-dir="app/src/main/res/drawable-land-ldpi" />
-    <source-file src="src/android/res/drawable-land-mdpi/location_marker.png" target-dir="app/src/main/res/drawable-land-mdpi" />
-    <source-file src="src/android/res/drawable-land-xhdpi/location_marker.png" target-dir="app/src/main/res/drawable-land-xhdpi" />
+    <source-file src="src/android/res/drawable-land-hdpi/location_marker.png"
+      target-dir="app/src/main/res/drawable-land-hdpi" />
+    <source-file src="src/android/res/drawable-land-ldpi/location_marker.png"
+      target-dir="app/src/main/res/drawable-land-ldpi" />
+    <source-file src="src/android/res/drawable-land-mdpi/location_marker.png"
+      target-dir="app/src/main/res/drawable-land-mdpi" />
+    <source-file src="src/android/res/drawable-land-xhdpi/location_marker.png"
+      target-dir="app/src/main/res/drawable-land-xhdpi" />
     <source-file src="src/android/res/drawable-ldpi/location_marker.png" target-dir="app/src/main/res/drawable-ldpi" />
     <source-file src="src/android/res/drawable-mdpi/location_marker.png" target-dir="app/src/main/res/drawable-mdpi" />
-    <source-file src="src/android/res/drawable-port-hdpi/location_marker.png" target-dir="app/src/main/res/drawable-port-hdpi" />
-    <source-file src="src/android/res/drawable-port-ldpi/location_marker.png" target-dir="app/src/main/res/drawable-port-ldpi" />
-    <source-file src="src/android/res/drawable-port-mdpi/location_marker.png" target-dir="app/src/main/res/drawable-port-mdpi" />
-    <source-file src="src/android/res/drawable-port-xhdpi/location_marker.png" target-dir="app/src/main/res/drawable-port-xhdpi" />
-    <source-file src="src/android/res/drawable-xhdpi/location_marker.png" target-dir="app/src/main/res/drawable-xhdpi" />
-    <source-file src="src/android/res/drawable-xxhdpi/location_marker.png" target-dir="app/src/main/res/drawable-xxhdpi" />
+    <source-file src="src/android/res/drawable-port-hdpi/location_marker.png"
+      target-dir="app/src/main/res/drawable-port-hdpi" />
+    <source-file src="src/android/res/drawable-port-ldpi/location_marker.png"
+      target-dir="app/src/main/res/drawable-port-ldpi" />
+    <source-file src="src/android/res/drawable-port-mdpi/location_marker.png"
+      target-dir="app/src/main/res/drawable-port-mdpi" />
+    <source-file src="src/android/res/drawable-port-xhdpi/location_marker.png"
+      target-dir="app/src/main/res/drawable-port-xhdpi" />
+    <source-file src="src/android/res/drawable-xhdpi/location_marker.png"
+      target-dir="app/src/main/res/drawable-xhdpi" />
+    <source-file src="src/android/res/drawable-xxhdpi/location_marker.png"
+      target-dir="app/src/main/res/drawable-xxhdpi" />
 
     <source-file src="src/android/AMap3DMap_6.3.0_AMapLocation_4.1.0_20180619.jar" target-dir="app/src/main/libs" />
     <source-file src="src/android/arm64-v8a" target-dir="app/src/main/libs" />
@@ -80,9 +88,9 @@ The native map view is faster, use less network usage, display 3D views, and eve
       <activity android:label="客户地图" android:name="com.yxt.cordova.MapActivity" />
       <activity android:label="我的轨迹" android:name="com.yxt.cordova.TraceActivity" />
     </config-file>
-    
+
     <config-file target="app/src/main/AndroidManifest.xml" parent="/manifest" mode="merge">
-      <uses-permission android:name="android.permission.INTERNET"/>
+      <uses-permission android:name="android.permission.INTERNET" />
       <!--用于进行网络定位-->
       <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"></uses-permission>
       <!--用于访问GPS定位-->
@@ -99,7 +107,7 @@ The native map view is faster, use less network usage, display 3D views, and eve
       <uses-permission android:name="android.permission.READ_PHONE_STATE"></uses-permission>
       <!-- 写入扩展存储，向扩展卡写入数据，用于写入缓存定位数据-->
       <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"></uses-permission>
-      <uses-permission android:name="android.permission.MANAGE_DOCUMENTS"/>
+      <uses-permission android:name="android.permission.MANAGE_DOCUMENTS" />
       <!--定位包、导航包需要的额外权限（注：基础权限也需要） -->
       <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
       <!-- GPS -->
@@ -109,17 +117,18 @@ The native map view is faster, use less network usage, display 3D views, and eve
 
   </platform>
 
-<!-- ios -->
-<platform name="ios">
+  <!-- ios -->
+  <platform name="ios">
 
     <preference name="API_KEY_FOR_IOS" />
+    <preference name="GOOGLE_MAP_API_KEY_FOR_IOS" />
 
     <config-file target="config.xml" parent="/*">
-        <feature name="AMapPlugin">
-            <param name="ios-package" value="CDVAMap4Yxt"/>
-        </feature>
+      <feature name="AMapPlugin">
+        <param name="ios-package" value="CDVAMap4Yxt" />
+      </feature>
     </config-file>
-    
+
     <header-file src="src/ios/CDVAMap4Yxt.h" />
     <source-file src="src/ios/CDVAMap4Yxt.m" />
     <header-file src="src/ios/MAMutablePolylineRenderer.h" />
@@ -134,66 +143,52 @@ The native map view is faster, use less network usage, display 3D views, and eve
     <resource-file src="src/ios/icon/locationIcon@3x.png" />
     <resource-file src="src/ios/icon/naviBackIcon@2x.png" />
     <resource-file src="src/ios/icon/naviBackIcon@3x.png" />
-    
-    <!-- <resource-file src="src/ios/MAMapKit.framework/AMap.bundle" /> -->
-
-    <!--引入framework-->
-    <!-- <framework src="src/ios/AMapSearchKit.framework" custom="true" />
-    <framework src="src/ios/AMapFoundationKit.framework" custom="true" />
-    <framework src="src/ios/MAMapKit.framework" custom="true" /> -->
-
-    <!-- <framework src="UIKit.framework" />
-    <framework src="Foundation.framework" />
-    <framework src="CoreGraphics.framework" />
-    <framework src="QuartzCore.framework" />
-    <framework src="Security.framework" />
-    <framework src="CoreTelephony.framework" />
-    <framework src="SystemConfiguration.framework" />
-    <framework src="CoreLocation.framework" />
-    <framework src="OpenGLES.framework" />
-    <framework src="AdSupport.framework" />
-    <framework src="JavaScriptCore.framework" />
-    <framework src="GLKit.framework" />
-    <framework src="libstdc++.6.0.9.tbd"/>
-    <framework src="libc++.tbd" /> -->
-    <!-- <framework src="libz.tbd" /> -->
 
     <config-file target="*-Info.plist" parent="NSLocationWhenInUseUsageDescription">
-        <string>App中签到等功能需要使用系统定位服务，请允许</string>
+      <string>App中签到等功能需要使用系统定位服务，请允许</string>
     </config-file>
     <config-file target="*-Info.plist" parent="NSLocationAlwaysUsageDescription">
-        <string>App中签到等功能需要使用系统定位服务，请允许</string>
+      <string>App中签到等功能需要使用系统定位服务，请允许</string>
     </config-file>
     <config-file target="*-Info.plist" parent="NSLocationAlwaysAndWhenInUseUsageDescription">
-        <string>App中签到等功能需要使用系统定位服务，请允许</string>
+      <string>App中签到等功能需要使用系统定位服务，请允许</string>
     </config-file>
     <config-file target="*-Info.plist" parent="NSPhotoLibraryUsageDescription">
-        <string>是否允许此App访问您的相册?</string>
+      <string>是否允许此App访问您的相册?</string>
     </config-file>
     <config-file target="*-Info.plist" parent="NSCameraUsageDescription">
-        <string>是否允许此App访问您的相机?</string>
+      <string>是否允许此App访问您的相机?</string>
     </config-file>
 
     <config-file target="*-Info.plist" parent="NSAppTransportSecurity">
-        <dict>
-            <key>NSAllowsArbitraryLoads</key>
-            <true/>
-        </dict>
+      <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <true />
+      </dict>
     </config-file>
 
     <!--scheme query whitlist-->
-  <config-file platform="ios" target="*-Info.plist" parent="LSApplicationQueriesSchemes">
+    <config-file platform="ios" target="*-Info.plist" parent="LSApplicationQueriesSchemes">
       <array>
-		    <string>baidumap</string>
-		    <string>qqmap</string>
-		    <string>iosamap</string>
+        <string>baidumap</string>
+        <string>qqmap</string>
+        <string>iosamap</string>
+        <string>googlechromes</string>
+        <string>comgooglemaps</string>
       </array>
-  </config-file>
+    </config-file>
 
     <!-- APIKey 请自行配置 参照高德官网 -->
     <config-file target="*-Info.plist" parent="AMapApiKey">
-        <string>$API_KEY_FOR_IOS</string>
+      <string>$API_KEY_FOR_IOS</string>
     </config-file>
+
+    <!-- APIKey 请自行配置 参照谷歌地图官网 -->
+    <config-file target="*-Info.plist" parent="GoogleMapApiKey">
+      <string>$GOOGLE_MAP_API_KEY_FOR_IOS</string>
+    </config-file>
+
+    <dependency id="com.googlemaps.ios" url="https://github.com/mapsplugin/cordova-plugin-googlemaps-sdk" />
 
     <pods-config ios-min-version="10.0" use-frameworks="true"></pods-config>
     <!-- 2d 地图和 3d 地图不能同时存在 -->
@@ -203,5 +198,5 @@ The native map view is faster, use less network usage, display 3D views, and eve
     <pod name="AMapLocation" />
     <pod name="AMapNavi" />
 
-</platform>
+  </platform>
 </plugin>

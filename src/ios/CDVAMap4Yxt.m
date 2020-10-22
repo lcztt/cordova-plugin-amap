@@ -4,11 +4,13 @@
 #import <AMapFoundationKit/AMapFoundationKit.h>
 #import <AMapNaviKit/AMapNaviKit.h>
 #import <AMapLocationKit/AMapLocationKit.h>
+#import <GoogleMaps/GoogleMaps.h>
 #import "MAMutablePolylineRenderer.h"
 #import "MAMutablePolyline.h"
 #import "SBGMapHeaderView.h"
 
 static NSString* const USER_DEFAULT_KEY = @"locations";
+static NSString* const LATEST_LOCATION_KEY = @"latest_location";
 static NSString* const SPEED_KEY = @"speed";
 static NSString* const ACCURACY_KEY = @"accuracy";
 static NSString* const LATITUDE_KEY = @"latitude";
@@ -61,20 +63,91 @@ struct Yxtlocation {
 
 @property (nonatomic, strong) NSTimer *timer;
 
+@property (nonatomic, strong) NSDictionary *codeForCountryDictionary;
+
+@property (nonatomic, assign) BOOL useGoogle;
+
 @end
 
 
 @implementation CDVAMap4Yxt
 
+- (void)pluginInitialize
+{
+    NSArray *countryCodes = [NSLocale ISOCountryCodes];
+    NSMutableArray *countries = [NSMutableArray arrayWithCapacity:[countryCodes count]];
+    NSString *currentLanguage = [[NSLocale preferredLanguages] objectAtIndex:0];
+    
+    for (NSString *countryCode in countryCodes)
+    {
+        NSString *identifier = [NSLocale localeIdentifierFromComponents: [NSDictionary dictionaryWithObject: countryCode forKey: NSLocaleCountryCode]];
+        NSString *country = [[[NSLocale alloc] initWithLocaleIdentifier:currentLanguage] displayNameForKey: NSLocaleIdentifier value: identifier];
+        [countries addObject: country];
+    }
+    
+    self.codeForCountryDictionary = [[NSDictionary alloc] initWithObjects:countryCodes forKeys:countries];
+    [self initLocationConfig];
+}
+
 //readValueFrom mainBundle
 - (NSString *)getAMapApiKey
 {
-    return [[[NSBundle mainBundle] infoDictionary] objectForKey:@"AMapApiKey"];
+    NSString *APIKey = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"AMapApiKey"];
+    if (APIKey == nil) {
+        UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"API key error"
+                                                                       message:@"高德地图 api key 为空"
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        
+        UIAlertAction* ok = [UIAlertAction actionWithTitle:@"close"
+                                                     style:UIAlertActionStyleDefault
+                                                   handler:^(UIAlertAction* action)
+                             {
+            [alert dismissViewControllerAnimated:YES completion:nil];
+        }];
+        
+        [alert addAction:ok];
+        
+        [self.viewController presentViewController:alert
+                                          animated:YES
+                                        completion:nil];
+        return @"";
+    }
+    
+    return APIKey;
+}
+
+//readValueFrom mainBundle
+- (NSString *)getGoogleMapApiKey
+{
+    NSString *APIKey = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"GoogleMapApiKey"];
+    if (APIKey == nil) {
+        UIAlertController* alert = [UIAlertController alertControllerWithTitle:@"API key error"
+                                                                       message:@"谷歌地图 api key 为空"
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        
+        UIAlertAction* ok = [UIAlertAction actionWithTitle:@"close"
+                                                     style:UIAlertActionStyleDefault
+                                                   handler:^(UIAlertAction* action)
+                             {
+            [alert dismissViewControllerAnimated:YES completion:nil];
+        }];
+        
+        [alert addAction:ok];
+        
+        [self.viewController presentViewController:alert
+                                          animated:YES
+                                        completion:nil];
+        APIKey = @"AIzaSyBR0cf0DMkR67gm7e2WMzhGbOLsAAU5_fo";
+        return APIKey;
+    }
+    
+    return APIKey;
 }
 
 - (void)initLocationConfig
 {
     [AMapServices sharedServices].apiKey = [self getAMapApiKey];
+    [GMSServices provideAPIKey:[self getGoogleMapApiKey]];
 }
 
 #pragma mark - location -
@@ -82,8 +155,13 @@ struct Yxtlocation {
 //获取当前位置
 - (void)getCurrentPosition:(CDVInvokedUrlCommand *)command
 {
+    NSDictionary *params = [command.arguments firstObject];
+    BOOL useGoogle = false;
+    if (params && params[@"useGoogle"]) {
+        useGoogle = [params[@"useGoogle"] boolValue];
+    }
+    
     if (!self.curLocationManager) {
-        [self initLocationConfig];
         self.curLocationManager = [[AMapLocationManager alloc] init];
         self.curLocationManager.delegate = self;
         [self.curLocationManager setDesiredAccuracy:kCLLocationAccuracyNearestTenMeters];
@@ -103,11 +181,19 @@ struct Yxtlocation {
                 
             } else if (location) {
                 
-                NSDictionary *dict = @{
-                                       @"latitude":@(location.coordinate.latitude),
-                                       @"longitude":@(location.coordinate.longitude)};
-                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
+                if (useGoogle) {
+                    [self googleReverseGeocoderLocationWith:location completion:^(NSDictionary *dict) {
+                        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
+                        [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+                    }];
+                } else {
+                    [self iOSReverseGeocoderLocationWith:location completion:^(NSDictionary *dict) {
+                        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK messageAsDictionary:dict];
+                        [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+                    }];
+                }
                 
+                return;
             } else if (error) {
                 
                 NSString *errorCode = [NSString stringWithFormat: @"%ld", (long)error.code];
@@ -119,6 +205,79 @@ struct Yxtlocation {
             }
             [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         }];
+    }];
+}
+
+// 根据经纬度反向地理编译出地址信息
+- (void)iOSReverseGeocoderLocationWith:(CLLocation *)location completion:(void(^)(NSDictionary *))completion
+{
+    CLGeocoder *geocoder = [[CLGeocoder alloc] init];
+    [geocoder reverseGeocodeLocation:location completionHandler:^(NSArray *array, NSError *error) {
+
+        if (array.count > 0) {
+            CLPlacemark *placemark = [array objectAtIndex:0];
+            NSLog(@"%@>%@>%@>%@",placemark.ISOcountryCode,placemark.country,placemark.administrativeArea, placemark.locality);
+
+            NSDictionary *params = @{
+                @"latitude":@(location.coordinate.latitude),
+                @"longitude":@(location.coordinate.longitude),
+                @"countryCode":placemark.ISOcountryCode ?: @"",
+                @"country":placemark.country ?: @"",
+                @"prov": placemark.administrativeArea ?: @"",
+                @"city":placemark.locality ?: @"",
+                @"address": placemark.thoroughfare ?: @"",
+                @"area": placemark.subLocality ?: @"",
+                @"feature": placemark.thoroughfare ?: @"",
+            };
+            NSLog(@"%@", params);
+            if (completion) {
+                completion(params);
+            }
+        } else {
+            NSDictionary *dict = @{@"latitude":@(location.coordinate.latitude),
+                                   @"longitude":@(location.coordinate.longitude)};
+            if (completion) {
+                completion(dict);
+            }
+        }
+    }];
+}
+
+// 根据经纬度反向地理编译出地址信息
+- (void)googleReverseGeocoderLocationWith:(CLLocation *)location completion:(void(^)(NSDictionary *))completion
+{
+    GMSGeocoder *reverseGeocoder = [GMSGeocoder geocoder];
+    [reverseGeocoder reverseGeocodeCoordinate:location.coordinate completionHandler:^(GMSReverseGeocodeResponse *response, NSError *error) {
+        
+        if (response.firstResult) {
+            
+            GMSAddress *address = response.firstResult;
+            
+            NSMutableDictionary *result = [NSMutableDictionary dictionary];
+            [result setObject:[NSNumber numberWithDouble:location.coordinate.latitude] forKey:@"latitude"];
+            [result setObject:[NSNumber numberWithDouble:location.coordinate.longitude] forKey:@"longitude"];
+            
+            [result setObject:address.country ?: @"" forKey:@"country"];
+            NSString *countryCode = [self.codeForCountryDictionary objectForKey:address.country];
+            [result setObject:countryCode ?: @"" forKey:@"countryCode"];
+            
+            [result setObject:address.administrativeArea ?: @"" forKey:@"prov"];
+            [result setObject:address.locality ?: @"" forKey:@"city"];
+            
+            [result setObject:@"" forKey:@"address"];
+            [result setObject:address.subLocality ?: @"" forKey:@"area"];
+            [result setObject:[address.lines firstObject] ?: @"" forKey:@"feature"];
+            if (completion) {
+                completion(result);
+            }
+        } else {
+            
+            NSDictionary *dict = @{@"latitude":@(location.coordinate.latitude),
+                                   @"longitude":@(location.coordinate.longitude)};
+            if (completion) {
+                completion(dict);
+            }
+        }
     }];
 }
 
@@ -136,7 +295,6 @@ struct Yxtlocation {
         return;
     }
     
-    [self initLocationConfig];
     if (self.locationManager) {
         self.locationManager = nil;
     }
@@ -312,7 +470,6 @@ struct Yxtlocation {
     NSUserDefaults* userDefault = [NSUserDefaults standardUserDefaults];
     [userDefault removeObjectForKey: USER_DEFAULT_KEY];
 }
-
 
 #pragma mark - navigation -
 
@@ -554,6 +711,7 @@ struct Yxtlocation {
     
     NSDictionary *params = command.arguments[0];
     NSInteger time = [params[@"time"] integerValue];
+    self.useGoogle = [params[@"useGoogle"] boolValue];
     
     [self stopTimer];
     [self startTimerWithInterval:time];
@@ -584,40 +742,64 @@ struct Yxtlocation {
 - (void)timerHandler
 {
     if (!self.curLocationManager) {
-            [self initLocationConfig];
-            self.curLocationManager = [[AMapLocationManager alloc] init];
-            self.curLocationManager.delegate = self;
-            [self.curLocationManager setDesiredAccuracy:kCLLocationAccuracyNearestTenMeters];
-        }
-        
-        [self.commandDelegate runInBackground:^{
-            [self.curLocationManager requestLocationWithReGeocode:YES completionBlock:^(CLLocation *location, AMapLocationReGeocode *regeocode, NSError *error) {
-                NSDictionary *dict = nil;
-                if (regeocode) {
-                    dict = @{@"ok":@1,
-                             @"provinceName":regeocode.province,
-                             @"cityName":regeocode.city,
-                             @"cityCode":regeocode.citycode,
-                             @"districtName":regeocode.district,
-                             @"latitude":@(location.coordinate.latitude),
-                             @"longitude":@(location.coordinate.longitude)};
-                    
-                } else if (location) {
-                    
-                    dict = @{@"ok":@1,
-                             @"latitude":@(location.coordinate.latitude),
-                             @"longitude":@(location.coordinate.longitude)};
-                    
-                } else if (error) {
-                    
-                    NSString *errorCode = [NSString stringWithFormat: @"%ld", (long)error.code];
-                    dict = @{@"ok": @0,
-                             @"errorCode": errorCode,
-                             @"errorInfo": error.localizedDescription};
+        self.curLocationManager = [[AMapLocationManager alloc] init];
+        self.curLocationManager.delegate = self;
+        [self.curLocationManager setDesiredAccuracy:kCLLocationAccuracyNearestTenMeters];
+    }
+    
+    [self.commandDelegate runInBackground:^{
+        [self.curLocationManager requestLocationWithReGeocode:NO completionBlock:^(CLLocation *location, AMapLocationReGeocode *regeocode, NSError *error) {
+            NSDictionary *dict = nil;
+            if (regeocode) {
+                dict = @{@"ok":@1,
+                         @"provinceName":regeocode.province,
+                         @"cityName":regeocode.city,
+                         @"cityCode":regeocode.citycode,
+                         @"districtName":regeocode.district,
+                         @"latitude":@(location.coordinate.latitude),
+                         @"longitude":@(location.coordinate.longitude)};
+                
+            } else if (location) {
+                
+                NSDictionary *dict = [self getLastLocation];
+                NSDictionary *new_dict = @{@"latitude":@(location.coordinate.latitude),
+                                           @"longitude":@(location.coordinate.longitude)};
+                [self setLastLocation:new_dict];
+                
+                if (dict.count == 2) {
+                    CLLocationCoordinate2D coord = CLLocationCoordinate2DMake([dict[@"latitude"] doubleValue], [dict[@"longitude"] doubleValue]);
+                    double distance = [self distanceFromLocation:coord toLocation:location.coordinate];
+                    if (distance < 1000) {
+                        return;
+                    }
                 }
-                [self callbackJSWithParams:dict];
-            }];
+                
+                if (self.useGoogle) {
+                    [self googleReverseGeocoderLocationWith:location completion:^(NSDictionary *dict) {
+                        NSMutableDictionary *dictM = [NSMutableDictionary dictionaryWithDictionary:dict];
+                        dictM[@"ok"] = @1;
+                        [self callbackJSWithParams:dictM];
+                    }];
+                } else {
+                    [self iOSReverseGeocoderLocationWith:location completion:^(NSDictionary *dict) {
+                        NSMutableDictionary *dictM = [NSMutableDictionary dictionaryWithDictionary:dict];
+                        dictM[@"ok"] = @1;
+                        [self callbackJSWithParams:dictM];
+                    }];
+                }
+                
+                return;
+                
+            } else if (error) {
+                
+                NSString *errorCode = [NSString stringWithFormat: @"%ld", (long)error.code];
+                dict = @{@"ok": @0,
+                         @"errorCode": errorCode,
+                         @"errorInfo": error.localizedDescription};
+            }
+            [self callbackJSWithParams:dict];
         }];
+    }];
 }
 
 - (void)callbackJSWithParams:(NSDictionary *)params
@@ -641,6 +823,33 @@ struct Yxtlocation {
 - (void)onReset
 {
     [self stopTimer];
+}
+
+- (double)distanceFromLocation:(CLLocationCoordinate2D)aCoordinate toLocation:(CLLocationCoordinate2D)bCoordinate
+{
+    CLLocation *_aLocation = [[CLLocation alloc] initWithLatitude:aCoordinate.latitude
+                                                        longitude:aCoordinate.longitude];
+    CLLocation *_bLocation = [[CLLocation alloc] initWithLatitude:bCoordinate.latitude
+                                                        longitude:bCoordinate.longitude];
+    CLLocationDistance distance = [_aLocation distanceFromLocation:_bLocation];
+    return (double)distance;
+}
+
+- (NSDictionary *)getLastLocation
+{
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    NSDictionary *dict = [userDefaults objectForKey:LATEST_LOCATION_KEY];
+    if(dict == nil){
+        dict = [NSDictionary dictionary];
+    }
+    return dict;
+}
+
+- (void)setLastLocation:(NSDictionary *)location
+{
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    [userDefaults setObject:location forKey:LATEST_LOCATION_KEY];
+    [userDefaults synchronize];
 }
 
 #pragma mark -
@@ -668,17 +877,17 @@ struct Yxtlocation {
         return;
     }
     NSDictionary *params = command.arguments[0];
-//
-//    NSDictionary *params = @{@"start_address":@"我的位置",
-//                             @"start_lat":@"39.1138003159",
-//                             @"start_lng":@"117.2165143490",
-//                             @"end_address":@"终点",
-//                             @"end_lat":@"39.1042806705",
-//                             @"end_lng":@"117.2229087353",
-//
-//                             @"baidu":@"baidumap://map/direction?origin=34.264642646862,108.95108518068&destination=40.007623,116.360582&coord_type=bd09ll&mode=driving&src=ios.baidu.openAPIdemo",
-//                             @"gaode":@"iosamap://navi?sourceApplication=app_name&lat=36.547901&lon=104.258354&dev=0",
-//                             @"qq":@"qqmap://map/routeplan?type=drive&from=清华&fromcoord=39.994745,116.247282&to=怡和世家&tocoord=39.867192,116.493187&referer=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77"};
+    //
+    //    NSDictionary *params = @{@"start_address":@"我的位置",
+    //                             @"start_lat":@"39.1138003159",
+    //                             @"start_lng":@"117.2165143490",
+    //                             @"end_address":@"终点",
+    //                             @"end_lat":@"39.1042806705",
+    //                             @"end_lng":@"117.2229087353",
+    //
+    //                             @"baidu":@"baidumap://map/direction?origin=34.264642646862,108.95108518068&destination=40.007623,116.360582&coord_type=bd09ll&mode=driving&src=ios.baidu.openAPIdemo",
+    //                             @"gaode":@"iosamap://navi?sourceApplication=app_name&lat=36.547901&lon=104.258354&dev=0",
+    //                             @"qq":@"qqmap://map/routeplan?type=drive&from=清华&fromcoord=39.994745,116.247282&to=怡和世家&tocoord=39.867192,116.493187&referer=OB4BZ-D4W3U-B7VVO-4PJWW-6TKDJ-WPB77"};
     
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"导航" message:nil preferredStyle:UIAlertControllerStyleActionSheet];
     if ([[UIApplication sharedApplication] canOpenURL:[NSURL URLWithString:@"baidumap://"]]) {

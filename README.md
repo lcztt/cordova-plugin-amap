@@ -9,24 +9,24 @@ Both [PhoneGap](http://phonegap.com/) and [Apache Cordova](http://cordova.apache
 
 *npm (current stable 2.0.1)*
 ```bash
-$> cordova plugin add cordova-plugin-amap --variable API_KEY_FOR_ANDROID="YOUR_ANDROID_API_KEY_IS_HERE" --variable API_KEY_FOR_IOS="YOUR_IOS_API_KEY_IS_HERE"
+$> cordova plugin add cordova-plugin-amap --variable API_KEY_FOR_ANDROID="YOUR_ANDROID_API_KEY_IS_HERE" --variable API_KEY_FOR_IOS="YOUR_IOS_API_KEY_IS_HERE" --variable GOOGLE_MAP_API_KEY_FOR_IOS="YOUR_IOS_API_KEY_IS_HERE"
 ```
 
 *Github (current master, potentially unstable)*
 ```bash
-$> cordova plugin add https://github.com/Silverbase-FE/cordova-plugin-amap --variable API_KEY_FOR_ANDROID="YOUR_ANDROID_API_KEY_IS_HERE" --variable API_KEY_FOR_IOS="YOUR_IOS_API_KEY_IS_HERE"
+$> cordova plugin add https://github.com/lcztt/cordova-plugin-amap --variable API_KEY_FOR_ANDROID="YOUR_ANDROID_API_KEY_IS_HERE" --variable API_KEY_FOR_IOS="YOUR_IOS_API_KEY_IS_HERE" --variable GOOGLE_MAP_API_KEY_FOR_IOS="YOUR_IOS_API_KEY_IS_HERE"
 ```
 
 If you re-install the plugin, please always remove the plugin first, then remove the SDK
 
 ```bash
 $> cordova plugin rm cordova-plugin-amap
-$> cordova plugin add cordova-plugin-amap --variable API_KEY_FOR_ANDROID="YOUR_ANDROID_API_KEY_IS_HERE" --variable API_KEY_FOR_IOS="YOUR_IOS_API_KEY_IS_HERE"
+$> cordova plugin add cordova-plugin-amap --variable API_KEY_FOR_ANDROID="YOUR_ANDROID_API_KEY_IS_HERE" --variable API_KEY_FOR_IOS="YOUR_IOS_API_KEY_IS_HERE" --variable GOOGLE_MAP_API_KEY_FOR_IOS="YOUR_IOS_API_KEY_IS_HERE"
 ```
 
 The SDK-Plugin won't be uninstalled automatically and you will stuck on an old version.
 
-### [API Reference](https://github.com/Silverbase-FE/cordova-plugin-amap/blob/master/www/amap.js)
+### [API Reference](https://github.com/lcztt/cordova-plugin-amap/blob/master/www/amap.js)
 * getCurrentPosition
 
 <pre>
@@ -40,7 +40,7 @@ if (typeof AMapPlugin != 'undefined') {
     }, function (err) {
       // fail
       console.log(err);
-    })
+    }, {'useGoogle':0})
 }
 </pre>
 
@@ -81,7 +81,7 @@ if (typeof AMapPlugin != 'undefined') {
 // 停止定位
 </pre>
 
-* showMap
+<!-- * showMap
 
 <pre>
 // Show Map
@@ -100,10 +100,26 @@ if (typeof AMapPlugin != 'undefined') {
 <pre>
 // Trace Map
 // 轨迹地图
+</pre> -->
+
+* startScheduledPosition
+<pre>
+// Turn on continuous positioning
+// 开启持续定时定位
+
+if (typeof AMapPlugin != 'undefined') {
+    AMapPlugin.startScheduledPosition(function (data) {
+      // success
+      console.log(data);
+    }, function (err) {
+      // fail
+      console.log(err);
+    }, {'time':300, 'useGoogle':0})
+}
 </pre>
 
 ### Android
-![](https://raw.githubusercontent.com/Silverbase-FE/testApp-plugin-amap/master/screenshots/Screenshot_2018-08-01-00-45-23-372_com.amap.plugi.png)
+![](https://raw.githubusercontent.com/lcztt/testApp-plugin-amap/master/screenshots/Screenshot_2018-08-01-00-45-23-372_com.amap.plugi.png)
 
 ### iOS
 ![](https://upload-images.jianshu.io/upload_images/1876100-bf972cf0e66c9586.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/700)
@@ -128,7 +144,7 @@ H5定位，根据ip，这个误差就不提了。
 
 2、Android 6.0及以上版本 动态权限问题
 
-Android 6.0及以上版本调用原生功能，需要加入动态权限。示例代码如下图所示，加在生成的  [MainActivity.java](https://github.com/Silverbase-FE/testApp-plugin-amap/blob/master/platforms/android/app/src/main/java/com/amap/plugin/MainActivity.java) 文件中。
+Android 6.0及以上版本调用原生功能，需要加入动态权限。示例代码如下图所示，加在生成的  [MainActivity.java](https://github.com/lcztt/testApp-plugin-amap/blob/master/platforms/android/app/src/main/java/com/amap/plugin/MainActivity.java) 文件中。
 
 <pre>
 public class GpsActivity extends AppCompatActivity implements ActivityCompat.OnRequestPermissionsResultCallback {
@@ -297,7 +313,7 @@ public class GpsActivity extends AppCompatActivity implements ActivityCompat.OnR
 2、每次打包需要是发布版安全码SHA1的签名包,不然会报错。[如何获取发布版安全码SHA1](http://lbs.amap.com/faq/top/hot-questions/249)
 
 ### demo code repository
-[https://github.com/Silverbase-FE/testApp-plugin-amap 点击前往](https://github.com/Silverbase-FE/testApp-plugin-amap)
+[https://github.com/lcztt/testApp-plugin-amap 点击前往](https://github.com/lcztt/testApp-plugin-amap)
 
 -----
 开发调试插件，也是花费了大量的业余时间，如果对您有帮助，点个star吧！
